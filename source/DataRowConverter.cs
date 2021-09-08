@@ -23,7 +23,7 @@ namespace Shared.Common.Data
         public static TResult Cast<TRow>(TRow source)
             where TRow : DataRow
         {
-            return DataRowConvererImpl<TRow, TResult>.Cast(source);
+            return DataRowConverterImpl<TRow, TResult>.Cast(source);
         }
     }
 }
