@@ -35,9 +35,6 @@ namespace Geodaten.Data
     {
         public List<GeoData> FindLocation(string ort, string plz)
         {
-            ort = (ort ?? string.Empty).Trim();
-            plz = (plz ?? string.Empty).Trim();
-
             using (BackendTableAdapters.DeutschlandTableAdapter adapter = new BackendTableAdapters.DeutschlandTableAdapter())
             {
                 return adapter.FindLocation(ort, plz).Select(DataRowConverter<GeoData>.Cast).ToList();
