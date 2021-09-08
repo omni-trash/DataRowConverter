@@ -6,6 +6,8 @@ DataRowConverter - a simple object mapper for DataTable
 3. Model erstellen
 4. Repository erstellen
 
+![Screenshot](./images/screenshot1.PNG)
+
 ```csharp
 namespace Geodaten.Models
 {
@@ -44,7 +46,7 @@ namespace Geodaten.Data
     }
 }
 ```
-
+![Screenshot](./images/screenshot2.PNG)
 
 
 
