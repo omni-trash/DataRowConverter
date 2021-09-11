@@ -9,14 +9,15 @@ DataRowConverter - a simple object mapper for DataTable
 ![Screenshot](./images/screenshot1.PNG)
 
 ```csharp
-namespace Geodaten.Models
+namespace PersonDemo.Models
 {
-    public class GeoData
+    public class Person
     {
-        public string Postleitzahl { get; set; }
-        public string Ort { get; set; }
-        public double? Longitude { get; set; }
-        public double? Latitude { get; set; }
+        public string Vorname { get; set; }
+        public string Nachname { get; set; }
+        public DateTime? Geburtstag { get; set; }
+        public string Land { get; set; }
+        public double? Gewicht { get; set; }
     }
 }
 ```
@@ -26,18 +27,18 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 
-namespace Geodaten.Data
+namespace PersonDemo.Data
 {
+    using Interfaces;
     using Models;
-    using Shared.Common.Data;
 
-    public class Repository: IRepository
+    public class PersonRepository : IPersonRepository
     {
-        public List<GeoData> FindLocation(string ort, string plz)
+        public List<Person> FindPerson(string vorname, string nachname)
         {
-            using (BackendTableAdapters.DeutschlandTableAdapter adapter = new BackendTableAdapters.DeutschlandTableAdapter())
+            using (BackendTableAdapters.PersonTableAdapter adapter = new BackendTableAdapters.PersonTableAdapter())
             {
-                return adapter.FindLocation(ort, plz).Select(DataRowConverter<GeoData>.Cast).ToList();
+                return adapter.FindPerson(vorname, nachname).Select(DataRowConverter<Person>.Cast).ToList();
             }
         }
     }
@@ -47,8 +48,7 @@ namespace Geodaten.Data
 
 
 # Warum?
-DataTable, DataSet, TableAdapter ... das ist doch so alt wie Window Forms, macht doch keiner mehr.
-Alt ja, aber unterschätzt. Als Schicht für den Zugriff auf Daten ist es nach wie vor eine gute Wahl.
+DataTable, DataSet, TableAdapter sind als Schicht für den Zugriff auf Daten nach wie vor eine gute Wahl.
 Wer mit EF, Dapper, SQLPlus etc. arbeitet und damit klar kommt, alles super.
 
 Für DataSet gibt es in Visual Studio einen guten Designer, wo man sich alles schön zusammenklicken kann.
@@ -60,12 +60,13 @@ Für die typisierte DataRow werden Methoden generiert, mit denen man das abfrage
 Model-Instanz muss dann entsprechend erstellt werden. Das ist zwar umständlich aber was soll's.
 
 ```csharp
-    return adapter.FindLocation(ort, plz).Select(row => new GeoData
+    return adapter.FindPerson(vorname, nachname).Select(row => new Person
     {
-        Ort = row.Ort,
-        Postleitzahl = row.Postleitzahl,
-        Latitude = (row.IsLatitudeNull() ? (double?)null : row.Latitude),
-        Longitude = (row.IsLongitudeNull() ? (double?)null : row.Longitude)
+        Vorname = row.Vorname,
+        Nachname = row.Nachname,
+        Land = row.Land,
+        Geburtstag = row.IsGeburtstagNull() ? (DateTime?)null : row.Geburtstag,
+        Gewicht = row.IsGewichtNull() ? (double?)null : row.Gewicht
     }).ToList();
 ```
 
@@ -78,11 +79,11 @@ Abhilfe schafft der DataRowConverter. Er kann die Daten aus der Datenbank, die �
 einfach in eine Klasse übertragen.
 
 ```csharp
-    return adapter.FindLocation(ort, plz).Select(DataRowConverter<GeoData>.Cast).ToList();
+    return adapter.FindPerson(vorname, nachname).Select(DataRowConverter<Person>.Cast).ToList();
 ```
 
-# Was geht?
-Der Konverter bekommt zwar eine typisierte DataRow (zB DeutschlandRow), aber er nutzt nicht die generierten
+# Vorgehen
+Der Konverter bekommt zwar eine typisierte DataRow (zB PersonRow), aber er nutzt nicht die generierten
 Eigenschaften. Diese würden ja die nervige StrongTypingException("Der Wert für Spalte XYZ in Tabelle ABC ist DBNull")
 werfen, wenn die Typen nicht mit null belegt werden können.
 
@@ -91,15 +92,79 @@ DataRow gelesen, der Typ geprüft und einer neuen Model-Instanz zugewiesen. Der 
 somit auch null zuweisen.
 
 ```csharp
-namespace Geodaten.Models
+namespace PersonDemo.Models
 {
-    public class GeoData
+    public class Person
     {
-        public string Postleitzahl { get; set; }
-        public string Ort { get; set; }
-        public double? Longitude { get; set; }
-        public double? Latitude { get; set; }
+        public string Vorname { get; set; }
+        public string Nachname { get; set; }
+        public DateTime? Geburtstag { get; set; }
+        public string Land { get; set; }
+        public double? Gewicht { get; set; }
     }
 }
 ```
 
+Für die Zuweisung muss der Name aus der Model-Klasse und der DataRow-Spalte übereinstimmen (case-insensitive).
+Der Typ muss ebenfalls übereinstimmen, kann aber in der Model-Klass Nullable sein.
+
+Ist die Eigenschaft nicht Nullable, so kann sie in der Model-Klasse mit einem Wert vorbelegt werden. Dieser
+wird dann bei DBNull nicht überschrieben.
+
+```csharp
+namespace PersonDemo.Models
+{
+    public class Person
+    {
+        public string Vorname { get; set; }
+        public string Nachname { get; set; }
+        public DateTime? Geburtstag { get; set; }
+        public string Land { get; set; }
+        public double Gewicht { get; set; } = -1;
+    }
+}
+```
+
+Bei einem Konstruktor der eine DataRow akzepiert, wird lediglich dieser Konstrukor zu Initialisierung aufgerufen.
+Die Daten müssen dann dort übertragen werden.
+
+```csharp
+namespace PersonDemo.Models
+{
+    public class Person
+    {
+        public Person(DataRow row)
+        {
+            // take values from row
+        }
+
+        public string Vorname { get; set; }
+        public string Nachname { get; set; }
+        public DateTime? Geburtstag { get; set; }
+        public string Land { get; set; }
+        public double? Gewicht { get; set; }
+    }
+}
+```
+
+Aktzepiert die Klasse die entsprechende typisierte DataRow, so wird dieser genutzt. 
+Dieser Konstruktor hat die höhere Priorität.
+
+```csharp
+namespace PersonDemo.Models
+{
+    public class Person
+    {
+        public Person(Data.Backend.PersonRow row)
+        {
+            // take values from row
+        }
+
+        public string Vorname { get; set; }
+        public string Nachname { get; set; }
+        public DateTime? Geburtstag { get; set; }
+        public string Land { get; set; }
+        public double? Gewicht { get; set; }
+    }
+}
+```
