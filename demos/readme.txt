@@ -7,3 +7,7 @@ PersonDemo(Unity)
 = Windows Forms =
 PersonDemo(WinForms)
 - u must build the project before open the MainForm Designer
+
+= Web =
+PersonDemo(Web)
+- very simple build
